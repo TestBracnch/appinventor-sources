@@ -12,6 +12,7 @@ import com.google.appinventor.components.common.ComponentDescriptorConstants;
 import com.google.appinventor.components.common.YaVersion;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -146,6 +147,25 @@ public final class Compiler {
       "/tools/windows/libwinpthread-1.dll";
   private static final String WINDOWS_ZIPALIGN_TOOL =
       "/tools/windows/zipalign";
+
+  // TODO: Load Jetifier classpath using @argfile
+  private static final String JETIFIER_DIR =
+      "/tools/jetifier-standalone/lib/";
+  private static final String[] JETIFIER_CP = {
+      "annotations-13.0.jar",
+      "asm-6.0.jar",
+      "asm-commons-6.0.jar",
+      "asm-tree-6.0.jar",
+      "asm-util-6.0.jar",
+      "commons-cli-1.3.1.jar",
+      "gson-2.8.0.jar",
+      "jdom2-2.0.6.jar",
+      "jetifier-core-1.0.0-beta09.jar",
+      "jetifier-processor-1.0.0-beta09.jar",
+      "jetifier-standalone.jar",
+      "kotlin-stdlib-1.3.60.jar",
+      "kotlin-stdlib-common-1.3.60.jar"
+  };
 
   @VisibleForTesting
   static final String YAIL_RUNTIME = RUNTIME_FILES_DIR + "runtime.scm";
@@ -1061,7 +1081,9 @@ public final class Compiler {
       // actions are optional (and as many as needed).
       for (String broadcastReceiver : simpleBroadcastReceivers) {
         String[] brNameAndActions = broadcastReceiver.split(",");
-        if (brNameAndActions.length == 0) continue;
+        if (brNameAndActions.length == 0) {
+          continue;
+        }
         // Remove the SMS_RECEIVED broadcast receiver if we aren't including dangerous permissions
         if (isForCompanion && !includeDangerousPermissions) {
           boolean skip = false;
@@ -1071,11 +1093,13 @@ public final class Compiler {
               break;
             }
           }
-          if (skip) continue;
+          if (skip) {
+            continue;
+          }
         }
         out.write(
             "<receiver android:name=\"" + brNameAndActions[0] + "\" >\n");
-        if (brNameAndActions.length > 1){
+        if (brNameAndActions.length > 1) {
           out.write("  <intent-filter>\n");
           for (int i = 1; i < brNameAndActions.length; i++) {
             out.write("    <action android:name=\"" + brNameAndActions[i] + "\" />\n");
@@ -1089,7 +1113,7 @@ public final class Compiler {
       // URLs in intents (and in other contexts)
 
       out.write("      <provider\n");
-      out.write("         android:name=\"android.support.v4.content.FileProvider\"\n");
+      out.write("         android:name=\"androidx.core.content.FileProvider\"\n");
       out.write("         android:authorities=\"" + packageName + ".provider\"\n");
       out.write("         android:exported=\"false\"\n");
       out.write("         android:grantUriPermissions=\"true\">\n");
@@ -1911,6 +1935,12 @@ public final class Compiler {
       createDir(new File(dexCacheDir));
       dexTask.setDexedLibs(dexCacheDir);
     }
+
+    List<String> jetifierClasspath = new ArrayList<>();
+    for (String path : JETIFIER_CP) {
+      jetifierClasspath.add(getResource(JETIFIER_DIR + path));
+    }
+    dexTask.setJetifierClasspath(Joiner.on(File.pathSeparatorChar).join(jetifierClasspath));
 
     long startDx = System.currentTimeMillis();
     // Using System.err and System.out on purpose. Don't want to pollute build messages with

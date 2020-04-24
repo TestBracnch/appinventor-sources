@@ -1,13 +1,33 @@
 // -*- mode: java; c-basic-offset: 2; -*-
 // Copyright 2009-2011 Google, All Rights reserved
-// Copyright 2011-2019 MIT, All rights reserved
+// Copyright 2011-2020 MIT, All rights reserved
 // Released under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
 package com.google.appinventor.components.runtime;
 
+import android.app.Activity;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PorterDuff;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
+import android.util.Base64;
+import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
+
+import androidx.annotation.RequiresApi;
+
 import com.google.appinventor.components.annotations.DesignerComponent;
 import com.google.appinventor.components.annotations.DesignerProperty;
 import com.google.appinventor.components.annotations.IsColor;
@@ -28,23 +48,8 @@ import com.google.appinventor.components.runtime.util.ErrorMessages;
 import com.google.appinventor.components.runtime.util.FileUtil;
 import com.google.appinventor.components.runtime.util.MediaUtil;
 import com.google.appinventor.components.runtime.util.PaintUtil;
+import com.google.appinventor.components.runtime.util.SdkLevel;
 import com.google.appinventor.components.runtime.util.YailList;
-
-import android.app.Activity;
-import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.PorterDuff;
-import android.graphics.Rect;
-import android.graphics.RectF;
-import android.graphics.drawable.BitmapDrawable;
-import android.text.TextUtils;
-import android.util.Log;
-import android.view.GestureDetector;
-import android.view.MotionEvent;
-import android.view.View;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -587,6 +592,22 @@ public final class Canvas extends AndroidViewComponent implements ComponentConta
       clearDrawingLayer();  // will call invalidate()
     }
 
+    @RequiresApi(api = android.os.Build.VERSION_CODES.FROYO)
+    void setBackgroundImageBase64(String imageUrl) {
+      backgroundImagePath = (imageUrl == null) ? "" : imageUrl;
+      backgroundDrawable = null;
+      scaledBackgroundBitmap = null;
+
+      if (!TextUtils.isEmpty(backgroundImagePath)) {
+        byte[] decodedString = Base64.decode(backgroundImagePath, Base64.DEFAULT);
+        android.graphics.Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+        backgroundDrawable = new BitmapDrawable(decodedByte);
+      }
+
+      setBackground();
+      clearDrawingLayer();  // will call invalidate()
+    }
+
     private void setBackground() {
       Drawable setDraw = backgroundDrawable;
       if (backgroundImagePath != "" && backgroundDrawable != null) {
@@ -1009,6 +1030,26 @@ public final class Canvas extends AndroidViewComponent implements ComponentConta
   @SimpleProperty
   public void BackgroundImage(String path) {
     view.setBackgroundImage(path);
+  }
+
+  /**
+   * Specifies the backgound image in Base64 format
+   * imageUrl will be in format of: iVBORw0KG...s//f+4z/6Z
+   * @suppressdoc
+   * @param imageUrl the base64 format for an image
+   */
+  @RequiresApi(api = android.os.Build.VERSION_CODES.FROYO)
+  @SimpleProperty (
+      description = "Set the background image in Base64 format. This requires API level >= 8. For "
+          + "devices with API level less than 8, setting this will end up with an empty background."
+  )
+  public void BackgroundImageinBase64(String imageUrl) {
+    if (SdkLevel.getLevel() >= SdkLevel.LEVEL_FROYO) {
+      view.setBackgroundImageBase64(imageUrl);
+    } else {
+      view.setBackgroundImageBase64("");
+    }
+
   }
 
   /**
@@ -1531,7 +1572,7 @@ public final class Canvas extends AndroidViewComponent implements ComponentConta
        "event will be called.")
   public String Save() {
     try {
-      File file = FileUtil.getPictureFile("png");
+      File file = FileUtil.getPictureFile($form(), "png");
       return saveFile(file, Bitmap.CompressFormat.PNG, "Save");
     } catch (PermissionException e) {
       container.$form().dispatchPermissionDeniedEvent(this, "Save", e);
@@ -1573,7 +1614,7 @@ public final class Canvas extends AndroidViewComponent implements ComponentConta
       return "";
     }
     try {
-      File file = FileUtil.getExternalFile(fileName);
+      File file = FileUtil.getExternalFile($form(), fileName);
       return saveFile(file, format, "SaveAs");
     } catch (PermissionException e) {
       container.$form().dispatchPermissionDeniedEvent(this, "SaveAs", e);

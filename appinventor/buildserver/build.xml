@@ -80,11 +80,10 @@
       <fileset dir="${lib.dir}/android/tools" includes="*/aapt" />
       <fileset dir="${lib.dir}/android/tools" includes="*/libwinpthread-1.dll" />
       <fileset dir="${lib.dir}/android/tools" includes="*/lib64/*" />
+      <fileset dir="${lib.dir}/android/tools" includes="*/zipalign" />
+      <fileset dir="${lib.dir}/android/tools" includes="jetifier-standalone/lib/*.jar" />
     </copy>
     <chmod dir="${classes.tools.dir}" includes="*/aapt" perm="ugo+rx"/>
-    <copy todir="${classes.tools.dir}">
-      <fileset dir="${lib.dir}/android/tools" includes="*/zipalign" />
-    </copy>
     <chmod dir="${classes.tools.dir}" includes="*/zipalign" perm="ugo+rx"/>
 
     <!-- jar up the classes and resource files -->
@@ -217,7 +216,7 @@
        PlayAppExtras: builds ../build/buildserver/MITAI2Companion-full.apk
        ===================================================================== -->
   <target name="PlayAppExtras"
-          depends="CheckPlayAppExtras"
+          depends="CheckPlayAppExtras,PlayApp"
           unless="PlayAppExtras.uptodate">
     <java classname="com.google.appinventor.buildserver.Main" fork="true" failonerror="true">
       <classpath>
@@ -255,7 +254,7 @@
        Emulator: builds ../build/buildserver/Emulator.apk
        ===================================================================== -->
   <target name="Emulator"
-          depends="CheckEmulator"
+          depends="CheckEmulator,PlayAppExtras"
           unless="Emulator.uptodate">
     <java classname="com.google.appinventor.buildserver.Main" fork="true" failonerror="true">
       <classpath>

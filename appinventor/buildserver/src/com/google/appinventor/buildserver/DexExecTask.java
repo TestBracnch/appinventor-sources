@@ -44,6 +44,7 @@ public class DexExecTask {
     private int mChildProcessRamMb = 1024;
     private boolean mDisableDexMerger = false;
     private static Map<String, String> alreadyChecked = new HashMap<String, String>();
+    private String mJetifierClasspath;
 
     private static final Object semaphore = new Object(); // Used to protect dex cache creation
 
@@ -94,6 +95,10 @@ public class DexExecTask {
 
     public void setDisableDexMerger(boolean disable) {
         mDisableDexMerger = disable;
+    }
+
+    public void setJetifierClasspath(String cp) {
+        mJetifierClasspath = cp;
     }
 
     private boolean preDexLibraries(List<File> inputs) {
@@ -162,9 +167,52 @@ public class DexExecTask {
         }
     }
 
+    private String getJetifiedFilePath(File lib) {
+        String fileName = PathUtil.basename(lib.getAbsolutePath());
+        String fileNameWithoutExtension = PathUtil.trimOffExtension(fileName);
+        return fileNameWithoutExtension + "-jetified.jar";
+    }
+
+    // TODO: Handle Jetification of XML files
+    // TODO: Caching
+    private boolean runJetifier(File lib) {
+        int mx = mChildProcessRamMb - 200;
+
+        /*
+        java -cp <mJettifierClasspath> com.android.tools.build.jetifier.standalone.Main \
+        -i <input lib path> \
+        -o <output jetified lib path>
+         */
+
+        List<String> commandLineList = new ArrayList<>();
+        commandLineList.add(System.getProperty("java.home") + "/bin/java");
+        commandLineList.add("-mx" + mx + "M");
+        commandLineList.add("-cp");
+        commandLineList.add(mJetifierClasspath);
+        commandLineList.add("com.android.tools.build.jetifier.standalone.Main");
+        commandLineList.add("-i");
+        commandLineList.add(lib.getAbsolutePath());
+        commandLineList.add("-o");
+        commandLineList.add(getJetifiedFilePath(lib));
+
+        return Execution.execute(null, commandLineList.toArray(new String[0]), System.out, System.err);
+    }
+
     public boolean execute(List<File> paths) {
+        List<File> jetifiedPaths = new ArrayList<>();
+        for (File path : paths) {
+            if (path.getName().endsWith(".jar")) {
+                if (runJetifier(path)) {
+                    jetifiedPaths.add(new File(getJetifiedFilePath(path)));
+                }
+                // TODO: What to do in case Jetifier fails?
+            } else {
+                jetifiedPaths.add(path);
+            }
+        }
+
         // pre dex libraries if needed
-        boolean successPredex = preDexLibraries(paths);
+        boolean successPredex = preDexLibraries(jetifiedPaths);
         if (!successPredex) return false;
 
         System.out.println(String.format(
