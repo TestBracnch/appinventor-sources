@@ -5,7 +5,7 @@ on: push
 jobs:
   build:
     name: 'Build'
-    runs-on: 19.10
+    runs-on: 18.04
     steps:
       - uses: actions/checkout@v2
       - name: 'Set up JDK 1.8'
@@ -15,7 +15,7 @@ jobs:
       - name: 'Checkout submodules'
         uses: textbook/git-checkout-submodule-action@master
       - name: 'Install 32-bit dependencies'
-        run: sudo apt-get install -y libc6-i386 lib32z1 lib32stdc++6
+        run: sudo apt install -y libc6-i386 lib32z1 lib32stdc++6
       - name: 'Make Auth Key'
         run: ant MakeAuthKey
         working-directory: appinventor
