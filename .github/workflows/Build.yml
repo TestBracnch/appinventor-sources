@@ -67,3 +67,21 @@ jobs:
         with:
           name: BuildServerTar
           path: appinventor/build/buildserver/BuildServer.tar
+      - name: Setup gcloud environment
+        uses: GoogleCloudPlatform/github-actions@0.1.2
+        with:
+          # The version of the gcloud SDK to be installed.  Example: 275.0.0
+          version: # optional, default is 275.0.0
+         # The service account email which will be used for authentication.
+         service_account_email: # optional
+         # The service account key which will be used for authentication.
+         service_account_key: :  
+     - name: Runs the given gcloud command
+       uses: Adzz/deploy_to_gae_action@v1.1
+       with:
+       # The file with the service account credentials in.
+       credentials: 
+       # The name of the project you want to do stuff in.
+       project: 
+       # The command you wish to run e.g. deploy.
+       command: 
